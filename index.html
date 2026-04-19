@@ -520,14 +520,8 @@
         <button class="mode-tab" onclick="setMode(this,'style')">Style</button>
       </div>
     </div>
-    <div class="option-group">
-      <div class="section-label" style="margin-bottom:8px">Output language</div>
-      <select class="lang-select" id="lang">
-        <option value="English">English</option>
-        <option value="Traditional Chinese">繁體中文</option>
-        <option value="Simplified Chinese">简体中文</option>
-        <option value="Japanese">日本語</option>
-      </select>
+    <div class="option-group" style="display:flex;align-items:flex-end;padding-bottom:2px">
+      <div style="font-size:11px;color:var(--text-dim);line-height:1.5">Output: English + 繁體中文<br>雙語同步輸出</div>
     </div>
   </div>
 
@@ -625,17 +619,18 @@ function setStatus(msg, type) {
   }
 }
 
-function buildPrompt(mode, lang) {
-  const langNote = lang !== 'English' ? `Respond in ${lang}.` : '';
-  if (mode === 'prompt') return `Analyze this image and reverse-engineer the AI generation prompt. Output ONLY valid JSON, no markdown fences:
-{"prompt":"full generation prompt","negative_prompt":"what to avoid","style_tags":["tag1","tag2"],"model_suggestion":"e.g. Midjourney v6 / SDXL"}
-${langNote}`;
-  if (mode === 'style') return `Analyze the artistic style of this image. Output ONLY valid JSON:
-{"artist_style":"artist or style it resembles","art_movement":"e.g. Impressionism, Cyberpunk","color_palette":["color1","color2","color3"],"composition_notes":"brief note","mood":"overall mood","technical_medium":"digital painting / photo / watercolor etc."}
-${langNote}`;
-  return `You are an expert AI art analyst. Analyze this image thoroughly. Output ONLY valid JSON (no markdown, no extra text):
-{"prompt":"detailed AI generation prompt to recreate this image","negative_prompt":"what to avoid","style_tags":["tag1","tag2","tag3"],"model_suggestion":"best AI model","artist_style":"whose style it resembles","art_movement":"art movement or genre","color_palette":["color1","color2","color3"],"composition_notes":"composition analysis","mood":"emotional tone","technical_medium":"medium used","quality_keywords":["keyword1","keyword2"]}
-${langNote}`;
+function buildPrompt(mode) {
+  const base = `CRITICAL INSTRUCTION: Output ONLY a raw JSON object. Do NOT use markdown code fences (no backticks, no \'\'\'json). Start your response with { and end with }. No other text allowed.
+For each text field, provide English first then Traditional Chinese, separated by " / ".`;
+  if (mode === 'prompt') return base + `
+Analyze this image. Return exactly this JSON:
+{"prompt":"EN desc / 中文描述","negative_prompt":"EN / 中文","style_tags":["tag / 標籤","tag2 / 標籤2"],"model_suggestion":"Midjourney v6 / SDXL etc"}`;
+  if (mode === 'style') return base + `
+Analyze artistic style. Return exactly this JSON:
+{"artist_style":"EN / 中文","art_movement":"EN / 中文","color_palette":["color1","color2","color3"],"composition_notes":"EN / 中文","mood":"EN / 中文","technical_medium":"EN / 中文"}`;
+  return base + `
+Full analysis. Return exactly this JSON:
+{"prompt":"EN / 中文","negative_prompt":"EN / 中文","style_tags":["tag / 標籤"],"model_suggestion":"best model","artist_style":"EN / 中文","art_movement":"EN / 中文","color_palette":["color1","color2","color3"],"composition_notes":"EN / 中文","mood":"EN / 中文","technical_medium":"EN / 中文","quality_keywords":["kw / 關鍵字"]}`;
 }
 
 async function analyze() {
@@ -644,7 +639,6 @@ async function analyze() {
   setStatus('Analyzing with Gemini 2.5 Flash...', 'loading');
   document.getElementById('analyze-btn').disabled = true;
   document.getElementById('results').style.display = 'none';
-  const lang = document.getElementById('lang').value;
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
     const res = await fetch(url, {
@@ -653,7 +647,7 @@ async function analyze() {
       body: JSON.stringify({
         contents: [{ parts: [
           { inline_data: { mime_type: imageType, data: imageB64 } },
-          { text: buildPrompt(currentMode, lang) }
+          { text: buildPrompt(currentMode) }
         ]}],
         generationConfig: { temperature: 0.4, maxOutputTokens: 1000 }
       })
@@ -671,16 +665,22 @@ async function analyze() {
     if (!text) throw new Error('Gemini returned an empty response. Please try again.');
     let json;
     try {
-      let clean = text.replace(/^```[a-zA-Z]*\n?/gm, '').replace(/^```$/gm, '').trim();
+      // Strip markdown fences aggressively
+      let clean = text
+        .replace(/^```[a-zA-Z]*\s*/gm, '')
+        .replace(/```\s*$/gm, '')
+        .trim();
+      // Try parse directly
       try {
         json = JSON.parse(clean);
       } catch(_) {
+        // Extract { ... } block
         const match = clean.match(/\{[\s\S]*\}/);
-        if (!match) throw new Error('No JSON object found in response');
+        if (!match) throw new Error('No JSON found in: ' + clean.slice(0, 200));
         json = JSON.parse(match[0]);
       }
     } catch(e) {
-      throw new Error('Could not parse Gemini response as JSON.\n\nRaw: ' + text.slice(0, 300));
+      throw new Error('Parse error: ' + e.message + '\n\nRaw response:\n' + text.slice(0, 400));
     }
     renderResults(json);
     setStatus('');
