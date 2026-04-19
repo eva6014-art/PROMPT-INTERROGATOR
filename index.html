@@ -1,755 +1,324 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Prompt Interrogator — 影像逆向工程</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
 <style>
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --surface2: #18181f;
-    --border: rgba(255,255,255,0.07);
-    --border-hover: rgba(255,255,255,0.15);
-    --accent: #7c6aff;
-    --accent2: #ff6ab0;
-    --accent-dim: rgba(124,106,255,0.15);
-    --text: #f0eff8;
-    --text-muted: rgba(240,239,248,0.45);
-    --text-dim: rgba(240,239,248,0.25);
-    --success: #4ade80;
-    --danger: #ff6b6b;
-    --mono: 'DM Mono', monospace;
-    --display: 'Syne', sans-serif;
-    --radius: 12px;
-    --radius-sm: 8px;
-  }
-
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 14px;
-    line-height: 1.6;
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
-
-  /* Ambient background */
-  body::before {
-    content: '';
-    position: fixed;
-    top: -30%;
-    left: -20%;
-    width: 60%;
-    height: 60%;
-    background: radial-gradient(ellipse, rgba(124,106,255,0.12) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-  body::after {
-    content: '';
-    position: fixed;
-    bottom: -20%;
-    right: -10%;
-    width: 50%;
-    height: 50%;
-    background: radial-gradient(ellipse, rgba(255,106,176,0.08) 0%, transparent 70%);
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  .container {
-    position: relative;
-    z-index: 1;
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 60px 24px 80px;
-  }
-
-  /* Header */
-  .header { margin-bottom: 52px; }
-  .header-label {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .header-label::before {
-    content: '';
-    display: inline-block;
-    width: 18px;
-    height: 1px;
-    background: var(--accent);
-  }
-  .header h1 {
-    font-family: var(--display);
-    font-size: clamp(36px, 6vw, 56px);
-    font-weight: 800;
-    line-height: 1.05;
-    letter-spacing: -0.03em;
-    background: linear-gradient(135deg, #f0eff8 30%, rgba(240,239,248,0.5));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    margin-bottom: 14px;
-  }
-  .header p {
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.7;
-    max-width: 480px;
-  }
-
-  /* Section label */
-  .section-label {
-    font-size: 10px;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 8px;
-  }
-
-  /* API Key field */
-  .key-block { margin-bottom: 36px; }
-  .key-row {
-    display: flex;
-    gap: 8px;
-    align-items: stretch;
-  }
-  .key-row input {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 11px 16px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .key-row input::placeholder { color: var(--text-dim); }
-  .key-row input:focus { border-color: var(--accent); }
-  .btn-save {
-    background: var(--accent-dim);
-    border: 1px solid rgba(124,106,255,0.3);
-    border-radius: var(--radius-sm);
-    color: var(--accent);
-    font-family: var(--mono);
-    font-size: 12px;
-    letter-spacing: 0.05em;
-    padding: 11px 18px;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-  .btn-save:hover { background: rgba(124,106,255,0.25); border-color: rgba(124,106,255,0.5); }
-  .key-hint {
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--text-dim);
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .key-hint a { color: var(--accent); text-decoration: none; }
-  .key-hint a:hover { text-decoration: underline; }
-  .key-status { font-size: 12px; margin-left: 4px; }
-
-  /* Drop zone */
-  .upload-block { margin-bottom: 32px; }
-  .dropzone {
-    border: 1px dashed var(--border-hover);
-    border-radius: var(--radius);
-    padding: 48px 24px;
-    text-align: center;
-    cursor: pointer;
-    transition: all 0.25s;
-    position: relative;
-    overflow: hidden;
-    background: var(--surface);
-  }
-  .dropzone::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse at 50% 0%, rgba(124,106,255,0.06) 0%, transparent 70%);
-    opacity: 0;
-    transition: opacity 0.25s;
-  }
-  .dropzone:hover::before, .dropzone.drag::before { opacity: 1; }
-  .dropzone:hover, .dropzone.drag {
-    border-color: var(--accent);
-    border-style: solid;
-  }
-  .dropzone-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 16px;
-    border-radius: 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .dropzone-icon svg { width: 22px; height: 22px; stroke: var(--accent); fill: none; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-  .dropzone p { color: var(--text-muted); font-size: 14px; }
-  .dropzone .sub { font-size: 11px; color: var(--text-dim); margin-top: 5px; letter-spacing: 0.05em; }
-  input[type=file] { display: none; }
-
-  /* Preview */
-  #preview-area { display: none; margin-bottom: 32px; }
-  .preview-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 16px;
-    display: flex;
-    gap: 16px;
-    align-items: flex-start;
-  }
-  .preview-card img {
-    width: 100px;
-    height: 100px;
-    object-fit: cover;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .preview-info { flex: 1; min-width: 0; }
-  .preview-name { font-size: 13px; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 4px; }
-  .preview-size { font-size: 11px; color: var(--text-dim); margin-bottom: 12px; }
-  .btn-remove {
-    background: none;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-muted);
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 5px 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-remove:hover { border-color: var(--danger); color: var(--danger); }
-
-  /* Options row */
-  .options-row {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-    margin-bottom: 32px;
-  }
-  .option-group { flex: 1; min-width: 180px; }
-  .mode-tabs { display: flex; gap: 4px; }
-  .mode-tab {
-    flex: 1;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text-muted);
-    font-family: var(--mono);
-    font-size: 12px;
-    padding: 8px 4px;
-    cursor: pointer;
-    text-align: center;
-    transition: all 0.2s;
-  }
-  .mode-tab.active {
-    background: var(--accent-dim);
-    border-color: rgba(124,106,255,0.4);
-    color: var(--accent);
-  }
-  .mode-tab:hover:not(.active) { border-color: var(--border-hover); color: var(--text); }
-  .lang-select {
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-family: var(--mono);
-    font-size: 13px;
-    padding: 8px 12px;
-    outline: none;
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(240,239,248,0.3)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    transition: border-color 0.2s;
-  }
-  .lang-select:focus { border-color: var(--accent); }
-  .lang-select option { background: #18181f; }
-
-  /* Analyze button */
-  .btn-analyze {
-    width: 100%;
-    padding: 16px;
-    background: linear-gradient(135deg, var(--accent) 0%, #9b6aff 100%);
-    border: none;
-    border-radius: var(--radius);
-    color: #fff;
-    font-family: var(--display);
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: all 0.25s;
-    position: relative;
-    overflow: hidden;
-    margin-bottom: 24px;
-  }
-  .btn-analyze::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: rgba(255,255,255,0);
-    transition: background 0.2s;
-  }
-  .btn-analyze:hover::after { background: rgba(255,255,255,0.07); }
-  .btn-analyze:active { transform: scale(0.99); }
-  .btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-
-  /* Status */
-  #status { margin-bottom: 12px; min-height: 20px; }
-  .status-loading {
-    font-size: 12px;
-    color: var(--accent);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    letter-spacing: 0.05em;
-  }
-  .spinner {
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid rgba(124,106,255,0.3);
-    border-top-color: var(--accent);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    flex-shrink: 0;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .status-error {
-    font-size: 12px;
-    color: var(--danger);
-    background: rgba(255,107,107,0.08);
-    border: 1px solid rgba(255,107,107,0.2);
-    border-radius: var(--radius-sm);
-    padding: 10px 14px;
-    line-height: 1.6;
-  }
-
-  /* Results */
-  #results { display: none; animation: fadeUp 0.4s ease; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
-  .results-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-  .results-header span {
-    font-size: 11px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
-  .result-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); }
-
-  .result-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 12px;
-    transition: border-color 0.2s;
-  }
-  .result-card:hover { border-color: var(--border-hover); }
-  .result-card-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 12px;
-  }
-  .card-label {
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-  }
-  .btn-copy {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    color: var(--text-muted);
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 4px 12px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .btn-copy:hover { border-color: var(--accent); color: var(--accent); }
-  .prompt-text {
-    font-family: var(--mono);
-    font-size: 13px;
-    color: var(--text);
-    line-height: 1.7;
-    word-break: break-word;
-  }
-  .info-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  @media (max-width: 500px) { .info-grid { grid-template-columns: 1fr; } }
-  .info-item {}
-  .info-item-label {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    margin-bottom: 4px;
-  }
-  .info-item-val { font-size: 13px; color: var(--text); line-height: 1.5; }
-  .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
-  .tag {
-    font-family: var(--mono);
-    font-size: 11px;
-    padding: 4px 12px;
-    border-radius: 20px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    letter-spacing: 0.02em;
-  }
-  .tag.accent {
-    background: var(--accent-dim);
-    border-color: rgba(124,106,255,0.25);
-    color: rgba(180,170,255,0.9);
-  }
-
-  /* Footer */
-  .footer {
-    margin-top: 64px;
-    padding-top: 24px;
-    border-top: 1px solid var(--border);
-    text-align: center;
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.05em;
-  }
-  .footer a { color: var(--accent); text-decoration: none; }
-  .footer a:hover { text-decoration: underline; }
+:root {
+  --bg:#0a0a0f;--surface:#111118;--surface2:#18181f;
+  --border:rgba(255,255,255,0.07);--border-h:rgba(255,255,255,0.15);
+  --accent:#7c6aff;--accent-dim:rgba(124,106,255,0.15);--accent-b:rgba(124,106,255,0.35);
+  --text:#f0eff8;--muted:rgba(240,239,248,0.5);--dim:rgba(240,239,248,0.25);
+  --ok:#4ade80;--err:#ff6b6b;--err-bg:rgba(255,107,107,0.08);--err-b:rgba(255,107,107,0.2);
+  --mono:'DM Mono',monospace;--display:'Syne',sans-serif;--r:12px;--rs:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:14px;line-height:1.6;min-height:100vh}
+body::before{content:'';position:fixed;top:-30%;left:-20%;width:60%;height:60%;background:radial-gradient(ellipse,rgba(124,106,255,0.1) 0%,transparent 70%);pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(ellipse,rgba(255,106,176,0.06) 0%,transparent 70%);pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:740px;margin:0 auto;padding:56px 24px 80px}
+.eyebrow{font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.eyebrow::before{content:'';width:18px;height:1px;background:var(--accent)}
+h1{font-family:var(--display);font-size:clamp(38px,7vw,60px);font-weight:800;line-height:1.04;letter-spacing:-0.03em;background:linear-gradient(135deg,#f0eff8 30%,rgba(240,239,248,0.45));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px}
+.subtitle{font-size:14px;color:var(--muted);max-width:480px;line-height:1.7;margin-bottom:48px}
+.lbl{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+.key-wrap{margin-bottom:36px}
+.key-row{display:flex;gap:8px}
+.key-row input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-family:var(--mono);font-size:13px;padding:11px 16px;outline:none;transition:border-color 0.2s}
+.key-row input::placeholder{color:var(--dim)}
+.key-row input:focus{border-color:var(--accent)}
+.btn-sm{background:var(--accent-dim);border:1px solid var(--accent-b);border-radius:var(--rs);color:var(--accent);font-family:var(--mono);font-size:12px;padding:0 18px;cursor:pointer;transition:all 0.2s;white-space:nowrap}
+.btn-sm:hover{background:rgba(124,106,255,0.25)}
+.key-hint{margin-top:8px;font-size:11px;color:var(--dim)}
+.key-hint a{color:var(--accent);text-decoration:none}
+.key-hint a:hover{text-decoration:underline}
+#key-status{font-size:12px;margin-top:6px}
+.drop-wrap{margin-bottom:32px}
+.dropzone{border:1px dashed var(--border-h);border-radius:var(--r);padding:44px 24px;text-align:center;cursor:pointer;background:var(--surface);transition:all 0.2s;position:relative;overflow:hidden}
+.dropzone::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(124,106,255,0.07) 0%,transparent 70%);opacity:0;transition:opacity 0.2s}
+.dropzone:hover::before,.dropzone.drag::before{opacity:1}
+.dropzone:hover,.dropzone.drag{border-color:var(--accent);border-style:solid}
+.dz-icon{width:46px;height:46px;margin:0 auto 14px;border-radius:11px;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
+.dz-icon svg{width:20px;height:20px;stroke:var(--accent);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.dropzone p{color:var(--muted);font-size:14px}
+.dropzone .sub{font-size:11px;color:var(--dim);margin-top:4px}
+input[type=file]{display:none}
+#preview-area{display:none;margin-bottom:32px}
+.preview-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;display:flex;gap:16px;align-items:flex-start}
+.preview-card img{width:90px;height:90px;object-fit:cover;border-radius:var(--rs);border:1px solid var(--border);flex-shrink:0}
+.preview-name{font-size:13px;color:var(--text);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px}
+.preview-size{font-size:11px;color:var(--dim);margin-bottom:10px}
+.btn-rm{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:var(--mono);font-size:11px;padding:4px 11px;cursor:pointer;transition:all 0.2s}
+.btn-rm:hover{border-color:var(--err);color:var(--err)}
+.btn-analyze{width:100%;padding:15px;background:linear-gradient(135deg,var(--accent) 0%,#9b6aff 100%);border:none;border-radius:var(--r);color:#fff;font-family:var(--display);font-size:16px;font-weight:700;letter-spacing:0.02em;cursor:pointer;transition:all 0.2s;margin-bottom:22px}
+.btn-analyze:hover{opacity:0.9}
+.btn-analyze:active{transform:scale(0.99)}
+.btn-analyze:disabled{opacity:0.38;cursor:not-allowed;transform:none}
+#status{margin-bottom:14px;min-height:20px}
+.s-load{font-size:12px;color:var(--accent);display:flex;align-items:center;gap:8px}
+.spin{width:13px;height:13px;border:1.5px solid rgba(124,106,255,0.3);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.s-err{font-size:12px;color:var(--err);background:var(--err-bg);border:1px solid var(--err-b);border-radius:var(--rs);padding:10px 14px;line-height:1.6;white-space:pre-wrap}
+#results{display:none;animation:up 0.35s ease}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.res-hd{display:flex;align-items:center;gap:8px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.res-hd span{font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--dim)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;margin-bottom:10px;transition:border-color 0.2s}
+.card:hover{border-color:var(--border-h)}
+.card-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.card-lbl{font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:var(--dim)}
+.btn-copy{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--muted);font-family:var(--mono);font-size:11px;padding:3px 11px;cursor:pointer;transition:all 0.2s}
+.btn-copy:hover{border-color:var(--accent);color:var(--accent)}
+.pt{font-family:var(--mono);font-size:13px;color:var(--text);line-height:1.8;word-break:break-word}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:11px;padding:4px 11px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);color:var(--muted)}
+.chip.hi{background:var(--accent-dim);border-color:var(--accent-b);color:rgba(190,180,255,0.9)}
+.igrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:480px){.igrid{grid-template-columns:1fr}}
+.ilbl{font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--dim);margin-bottom:3px}
+.ival{font-size:13px;color:var(--text);line-height:1.5}
+footer{margin-top:60px;padding-top:20px;border-top:1px solid var(--border);text-align:center;font-size:11px;color:var(--dim);letter-spacing:0.04em}
+footer a{color:var(--accent);text-decoration:none}
+footer a:hover{text-decoration:underline}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="wrap">
+  <div class="eyebrow">Visual Reverse Engineering</div>
+  <h1>Prompt<br>Interrogator</h1>
+  <p class="subtitle">上傳任意圖片，自動逆向分析並輸出可直接用於 AI 生圖的完整咒語（英文 + 繁中雙語）。</p>
 
-  <header class="header">
-    <div class="header-label">Visual Reverse Engineering</div>
-    <h1>Prompt<br>Interrogator</h1>
-    <p>Upload any AI-generated image and extract the prompt, style DNA, and generation parameters — powered by Gemini 2.5 Flash.</p>
-  </header>
-
-  <!-- API Key -->
-  <div class="key-block">
-    <div class="section-label">Gemini API Key</div>
+  <div class="key-wrap">
+    <div class="lbl">Gemini API Key</div>
     <div class="key-row">
       <input type="password" id="api-key" placeholder="AIza..." autocomplete="off" />
-      <button class="btn-save" onclick="saveKey()">Save key</button>
-      <span class="key-status" id="key-status"></span>
+      <button class="btn-sm" onclick="saveKey()">儲存</button>
     </div>
-    <div class="key-hint">
-      Get your free key at
-      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com</a>
-      — stored locally in your browser only.
-    </div>
+    <div id="key-status"></div>
+    <div class="key-hint">免費取得：<a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com</a> — Key 只存在你的瀏覽器</div>
   </div>
 
-  <!-- Upload -->
-  <div class="upload-block">
-    <div class="section-label">Image</div>
+  <div class="drop-wrap">
+    <div class="lbl">圖片</div>
     <div id="dropzone" class="dropzone"
-      onclick="document.getElementById('file-input').click()"
-      ondragover="onDragOver(event)"
-      ondragleave="onDragLeave(event)"
-      ondrop="onDrop(event)">
-      <div class="dropzone-icon">
+      onclick="document.getElementById('fi').click()"
+      ondragover="onDO(event)" ondragleave="onDL()" ondrop="onDP(event)">
+      <div class="dz-icon">
         <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </div>
-      <p>Click to upload or drag & drop</p>
+      <p>點擊上傳或拖放圖片</p>
       <p class="sub">PNG · JPG · WEBP · GIF — max 5 MB</p>
-      <input type="file" id="file-input" accept="image/*" onchange="onFileSelect(event)" />
+      <input type="file" id="fi" accept="image/*" onchange="onFS(event)" />
     </div>
   </div>
 
-  <!-- Preview -->
   <div id="preview-area">
     <div class="preview-card">
-      <img id="preview-img" src="" alt="preview" />
-      <div class="preview-info">
-        <div class="preview-name" id="file-name"></div>
-        <div class="preview-size" id="file-size"></div>
-        <button class="btn-remove" onclick="clearImage()">✕ Remove</button>
+      <img id="prev-img" src="" alt="preview" />
+      <div style="flex:1;min-width:0">
+        <div class="preview-name" id="fn"></div>
+        <div class="preview-size" id="fs"></div>
+        <button class="btn-rm" onclick="clearImg()">✕ 移除</button>
       </div>
     </div>
   </div>
 
-  <!-- Options -->
-  <div style="margin-bottom:24px;font-size:11px;color:var(--text-dim);letter-spacing:0.05em">
-    OUTPUT &mdash; English + 繁體中文 雙語同步
-  </div>
-
-  <!-- Analyze -->
-  <button class="btn-analyze" id="analyze-btn" onclick="analyze()">Analyze Image →</button>
-
-  <!-- Status -->
+  <button class="btn-analyze" id="go-btn" onclick="analyze()">分析影像 →</button>
   <div id="status"></div>
-
-  <!-- Results -->
   <div id="results"></div>
 
-  <footer class="footer">
-    Prompt Interrogator &mdash; powered by <a href="https://aistudio.google.com" target="_blank" rel="noopener">Gemini 2.5 Flash</a>.
-    Your API key never leaves your browser.
-  </footer>
-
+  <footer>Prompt Interrogator &mdash; powered by <a href="https://aistudio.google.com" target="_blank" rel="noopener">Gemini</a>. Key 永遠不離開您的瀏覽器。</footer>
 </div>
-
 <script>
-let imageB64 = null, imageType = null, apiKey = '';
+let b64=null,mime=null,key='';
 
-// Persist key in localStorage
-window.addEventListener('DOMContentLoaded', () => {
-  const saved = localStorage.getItem('gemini_key');
-  if (saved) {
-    apiKey = saved;
-    document.getElementById('api-key').value = saved;
-    setKeyStatus('✓ Key loaded', 'success');
-  }
+window.addEventListener('DOMContentLoaded',()=>{
+  const k=localStorage.getItem('gk');
+  if(k){key=k;document.getElementById('api-key').value=k;ks('✓ 已載入','ok');}
 });
 
-function saveKey() {
-  const k = document.getElementById('api-key').value.trim();
-  if (!k) { setKeyStatus('⚠ Enter a key', 'error'); return; }
-  apiKey = k;
-  localStorage.setItem('gemini_key', k);
-  setKeyStatus('✓ Saved', 'success');
+function saveKey(){
+  const k=document.getElementById('api-key').value.trim();
+  if(!k){ks('⚠ 請輸入 Key','err');return;}
+  key=k;localStorage.setItem('gk',k);ks('✓ 已儲存','ok');
+}
+function ks(m,t){
+  const el=document.getElementById('key-status');
+  el.textContent=m;el.style.color=t==='ok'?'var(--ok)':'var(--err)';
 }
 
-function setKeyStatus(msg, type) {
-  const el = document.getElementById('key-status');
-  el.textContent = msg;
-  el.style.color = type === 'success' ? 'var(--success)' : 'var(--danger)';
-}
+function onDO(e){e.preventDefault();document.getElementById('dropzone').classList.add('drag');}
+function onDL(){document.getElementById('dropzone').classList.remove('drag');}
+function onDP(e){e.preventDefault();onDL();const f=e.dataTransfer.files[0];if(f)load(f);}
+function onFS(e){if(e.target.files[0])load(e.target.files[0]);}
 
-
-function onDragOver(e) { e.preventDefault(); document.getElementById('dropzone').classList.add('drag'); }
-function onDragLeave() { document.getElementById('dropzone').classList.remove('drag'); }
-function onDrop(e) { e.preventDefault(); document.getElementById('dropzone').classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) loadFile(f); }
-function onFileSelect(e) { if (e.target.files[0]) loadFile(e.target.files[0]); }
-
-function loadFile(file) {
-  if (file.size > 5 * 1024 * 1024) { alert('File too large (max 5MB)'); return; }
-  const reader = new FileReader();
-  reader.onload = e => {
-    const result = e.target.result;
-    imageB64 = result.split(',')[1];
-    imageType = file.type;
-    document.getElementById('preview-img').src = result;
-    document.getElementById('file-name').textContent = file.name;
-    document.getElementById('file-size').textContent = (file.size / 1024).toFixed(0) + ' KB';
-    document.getElementById('dropzone').style.display = 'none';
-    document.getElementById('preview-area').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
-    document.getElementById('results').innerHTML = '';
-    setStatus('');
+function load(file){
+  if(file.size>5*1024*1024){alert('檔案過大（最大 5MB）');return;}
+  const r=new FileReader();
+  r.onload=e=>{
+    b64=e.target.result.split(',')[1];mime=file.type;
+    document.getElementById('prev-img').src=e.target.result;
+    document.getElementById('fn').textContent=file.name;
+    document.getElementById('fs').textContent=(file.size/1024).toFixed(0)+' KB';
+    document.getElementById('dropzone').style.display='none';
+    document.getElementById('preview-area').style.display='block';
+    document.getElementById('results').style.display='none';
+    document.getElementById('results').innerHTML='';
+    st('');
   };
-  reader.readAsDataURL(file);
+  r.readAsDataURL(file);
 }
 
-function clearImage() {
-  imageB64 = null; imageType = null;
-  document.getElementById('dropzone').style.display = 'block';
-  document.getElementById('preview-area').style.display = 'none';
-  document.getElementById('results').style.display = 'none';
-  document.getElementById('file-input').value = '';
-  setStatus('');
+function clearImg(){
+  b64=null;mime=null;
+  document.getElementById('dropzone').style.display='block';
+  document.getElementById('preview-area').style.display='none';
+  document.getElementById('results').style.display='none';
+  document.getElementById('fi').value='';st('');
 }
 
-function setStatus(msg, type) {
-  const el = document.getElementById('status');
-  if (!msg) { el.innerHTML = ''; return; }
-  if (type === 'loading') {
-    el.innerHTML = `<div class="status-loading"><div class="spinner"></div>${esc(msg)}</div>`;
-  } else if (type === 'error') {
-    el.innerHTML = `<div class="status-error">${esc(msg)}</div>`;
-  } else {
-    el.textContent = msg;
-  }
+function st(m,t){
+  const el=document.getElementById('status');
+  if(!m){el.innerHTML='';return;}
+  if(t==='load')el.innerHTML='<div class="s-load"><div class="spin"></div>'+esc(m)+'</div>';
+  else if(t==='err')el.innerHTML='<div class="s-err">'+esc(m)+'</div>';
+  else el.textContent=m;
 }
 
-function buildPrompt() {
-  return `Analyze this image as an AI art analyst. For every text field write: English / 中文. Be concise.`;
+function prompt_text(){
+  return `You are a professional AI image prompt engineer. Analyze this image carefully.
+
+Return ONLY a valid JSON object. No markdown. No explanation. No code fences. Start with { end with }.
+
+Required JSON structure:
+{
+  "prompt_en": "Write a complete Stable Diffusion / Midjourney prompt. Include: detailed subject, art style, artist name if recognizable, lighting type, color palette description, composition, camera angle, quality tags like (masterpiece, best quality, highly detailed, 8k, ultra-realistic). This must be copy-paste ready for AI image generators.",
+  "prompt_zh": "完整繁體中文生圖咒語，包含：主體描述、畫風、藝術家參考、光線、色調、構圖、品質關鍵詞。可直接貼到 AI 生圖工具使用。",
+  "negative_prompt_en": "List of what to avoid: ugly, deformed, blurry, bad anatomy, extra limbs, watermark, signature, low quality, worst quality, jpeg artifacts, text",
+  "negative_prompt_zh": "負面提示詞中文版：醜陋、變形、模糊、解剖錯誤、多餘肢體、浮水印、簽名、低品質",
+  "style_tags": ["style tag 1", "style tag 2", "style tag 3", "style tag 4", "style tag 5"],
+  "artist_reference": "Specific artist name or style / 藝術家或風格名稱",
+  "art_movement": "Art movement name / 藝術流派",
+  "mood": "Mood and atmosphere / 氛圍情緒",
+  "technical_medium": "Medium like digital painting, oil painting, etc / 媒材",
+  "color_palette": ["warm amber tones", "cool blue shadows", "vivid accent colors"],
+  "recommended_model": "Best AI model for this style e.g. Stable Diffusion XL / Midjourney v6 / DALL-E 3",
+  "composition_notes": "Composition and framing analysis / 構圖分析"
+}`;
 }
 
-const RESPONSE_SCHEMA = {
-  type: "object",
-  properties: {
-    prompt:            { type: "string" },
-    negative_prompt:   { type: "string" },
-    artist_style:      { type: "string" },
-    art_movement:      { type: "string" },
-    mood:              { type: "string" },
-    technical_medium:  { type: "string" },
-    composition_notes: { type: "string" },
-    model_suggestion:  { type: "string" },
-    color_palette:     { type: "array", items: { type: "string" } },
-    style_tags:        { type: "array", items: { type: "string" } },
-    quality_keywords:  { type: "array", items: { type: "string" } }
-  },
-  required: ["prompt","negative_prompt","artist_style","art_movement","mood","technical_medium","color_palette","style_tags"]
-};
+async function analyze(){
+  if(!key){st('請先儲存 Gemini API Key。','err');return;}
+  if(!b64){st('請先上傳圖片。','err');return;}
+  st('Gemini 分析中，請稍候...','load');
+  document.getElementById('go-btn').disabled=true;
+  document.getElementById('results').style.display='none';
 
+  const models=['gemini-2.5-flash','gemini-1.5-pro','gemini-1.5-flash-latest','gemini-1.5-flash'];
+  let lastErr='';
 
-async function analyze() {
-  if (!apiKey) { setStatus('請先儲存 Gemini API Key。', 'error'); return; }
-  if (!imageB64) { setStatus('請先上傳圖片。', 'error'); return; }
-  setStatus('Gemini 分析中...', 'loading');
-  document.getElementById('analyze-btn').disabled = true;
-  document.getElementById('results').style.display = 'none';
-  try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ parts: [
-          { inline_data: { mime_type: imageType, data: imageB64 } },
-          { text: buildPrompt() }
-        ]}],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 1500,
-          responseMimeType: 'application/json',
-          responseSchema: RESPONSE_SCHEMA
+  for(const model of models){
+    try{
+      const res=await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {method:'POST',
+         headers:{'Content-Type':'application/json','x-goog-api-key':key},
+         body:JSON.stringify({
+           contents:[{parts:[
+             {inline_data:{mime_type:mime,data:b64}},
+             {text:prompt_text()}
+           ]}],
+           generationConfig:{temperature:0.2,maxOutputTokens:2000}
+         })
         }
-      })
-    });
-    if (!res.ok) {
-      const err = await res.json();
-      const msg = err?.error?.message || 'API error ' + res.status;
-      if (res.status === 400) throw new Error(msg + '\n→ 請確認 Key 正確，且已啟用 Gemini API');
-      if (res.status === 403) throw new Error('Permission denied (403) — 請確認此 Key 有存取權限');
-      if (res.status === 429) throw new Error('Rate limit exceeded (429) — 請稍後再試');
-      throw new Error(msg);
+      );
+      if(!res.ok){
+        const e=await res.json();
+        const msg=(e?.error?.message||'error '+res.status);
+        if(res.status===403)throw new Error('STOP:Permission denied (403) — 請確認 Key 正確');
+        if(res.status===429)throw new Error('STOP:Rate limit (429) — 請稍後再試');
+        lastErr='['+model+'] '+msg;continue;
+      }
+      const data=await res.json();
+      const raw=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+      if(!raw){lastErr='['+model+'] empty response';continue;}
+      const json=parseJ(raw);
+      if(!json){lastErr='['+model+'] JSON parse failed. Raw: '+raw.slice(0,150);continue;}
+      render(json,model);st('');
+      document.getElementById('go-btn').disabled=false;
+      return;
+    }catch(e){
+      if(e.message.startsWith('STOP:')){
+        st(e.message.slice(5),'err');
+        document.getElementById('go-btn').disabled=false;return;
+      }
+      lastErr=e.message;
     }
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!text) throw new Error('Gemini 回傳空白，請再試一次。');
-    let json;
-    try { json = JSON.parse(text); }
-    catch(e) {
-      const match = text.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('無法解析回應: ' + text.slice(0, 200));
-      json = JSON.parse(match[0]);
-    }
-    renderResults(json);
-    setStatus('');
-  } catch(e) {
-    setStatus(e.message, 'error');
-  } finally {
-    document.getElementById('analyze-btn').disabled = false;
   }
+  st('所有模型都失敗。\n最後錯誤：'+lastErr,'err');
+  document.getElementById('go-btn').disabled=false;
 }
 
-
-function copyToClipboard(text, btn) {
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = 'Copied!';
-    setTimeout(() => btn.textContent = 'Copy', 1500);
-  });
+function parseJ(raw){
+  let s=raw.replace(/^```[a-zA-Z]*\s*/gm,'').replace(/```\s*$/gm,'').trim();
+  try{return JSON.parse(s);}catch(_){}
+  const m=s.match(/\{[\s\S]*\}/);
+  if(!m)return null;
+  try{return JSON.parse(m[0]);}catch(_){}
+  try{return JSON.parse(m[0].replace(/,\s*([}\]])/g,'$1'));}catch(_){}
+  return null;
 }
 
-function esc(s) {
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/\n/g,'<br>');
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+
+function cpBtn(text){return '<button class="btn-copy" onclick="cp(this,'+JSON.stringify(text)+')">複製</button>';}
+function cp(btn,t){navigator.clipboard.writeText(t).then(()=>{btn.textContent='已複製!';setTimeout(()=>btn.textContent='複製',1500);});}
+
+function card(lbl,inner,ctext){
+  return '<div class="card"><div class="card-hd"><span class="card-lbl">'+lbl+'</span>'+(ctext?cpBtn(ctext):'')+'</div>'+inner+'</div>';
 }
 
-function card(label, inner, copyText) {
-  const copyBtn = copyText
-    ? `<button class="btn-copy" onclick="copyToClipboard(${JSON.stringify(copyText)}, this)">Copy</button>`
-    : '';
-  return `<div class="result-card">
-    <div class="result-card-header">
-      <span class="card-label">${label}</span>
-      ${copyBtn}
-    </div>
-    ${inner}
-  </div>`;
-}
+function render(j,model){
+  const el=document.getElementById('results');
+  let html='<div class="res-hd"><div class="dot"></div><span>分析完成 — '+esc(model)+'</span></div>';
 
-function renderResults(j) {
-  const el = document.getElementById('results');
-  let html = `<div class="results-header"><div class="result-dot"></div><span>Analysis complete</span></div>`;
+  if(j.prompt_en)
+    html+=card('🎨 AI 生圖咒語 — English','<div class="pt">'+esc(j.prompt_en)+'</div>',j.prompt_en);
+  if(j.prompt_zh)
+    html+=card('🎨 AI 生圖咒語 — 繁體中文','<div class="pt">'+esc(j.prompt_zh)+'</div>',j.prompt_zh);
 
-  if (j.prompt) {
-    html += card('AI Generation Prompt',
-      `<div class="prompt-text">${esc(j.prompt)}</div>`,
-      j.prompt);
-  }
-  if (j.negative_prompt) {
-    html += card('Negative Prompt',
-      `<div class="prompt-text">${esc(j.negative_prompt)}</div>`,
-      j.negative_prompt);
+  if(j.negative_prompt_en||j.negative_prompt_zh){
+    const neg=[j.negative_prompt_en,j.negative_prompt_zh].filter(Boolean).join('\n');
+    html+=card('🚫 負面提示詞 Negative Prompt','<div class="pt" style="color:var(--muted)">'+esc(neg)+'</div>',neg);
   }
 
-  const fields = [];
-  if (j.artist_style) fields.push(['Artist / Style Reference', j.artist_style]);
-  if (j.art_movement) fields.push(['Art Movement', j.art_movement]);
-  if (j.mood) fields.push(['Mood', j.mood]);
-  if (j.technical_medium) fields.push(['Medium', j.technical_medium]);
-  if (j.composition_notes) fields.push(['Composition', j.composition_notes]);
-  if (j.model_suggestion) fields.push(['Recommended Model', j.model_suggestion]);
-
-  if (fields.length) {
-    const grid = fields.map(([label, val]) =>
-      `<div class="info-item"><div class="info-item-label">${label}</div><div class="info-item-val">${esc(val)}</div></div>`
-    ).join('');
-    html += card('Style Analysis', `<div class="info-grid">${grid}</div>`);
+  const fields=[];
+  if(j.artist_reference)fields.push(['藝術家參考',j.artist_reference]);
+  if(j.art_movement)fields.push(['藝術風格',j.art_movement]);
+  if(j.mood)fields.push(['氛圍',j.mood]);
+  if(j.technical_medium)fields.push(['媒材',j.technical_medium]);
+  if(j.recommended_model)fields.push(['推薦生圖模型',j.recommended_model]);
+  if(j.composition_notes)fields.push(['構圖分析',j.composition_notes]);
+  if(fields.length){
+    const g=fields.map(([l,v])=>'<div><div class="ilbl">'+l+'</div><div class="ival">'+esc(v)+'</div></div>').join('');
+    html+=card('📊 風格分析','<div class="igrid">'+g+'</div>');
   }
 
-  if (j.color_palette?.length) {
-    const tags = j.color_palette.map(c => `<span class="tag">${esc(c)}</span>`).join('');
-    html += card('Color Palette', `<div class="tags-wrap">${tags}</div>`);
+  if(j.color_palette?.length){
+    const sw=j.color_palette.map(c=>'<span class="chip">'+esc(c)+'</span>').join('');
+    html+=card('🎨 色盤','<div class="chips">'+sw+'</div>');
+  }
+  if(j.style_tags?.length){
+    const tg=j.style_tags.map(t=>'<span class="chip hi">'+esc(t)+'</span>').join('');
+    html+=card('🏷️ 風格標籤','<div class="chips">'+tg+'</div>');
   }
 
-  const allTags = [...(j.style_tags || []), ...(j.quality_keywords || [])];
-  if (allTags.length) {
-    const tags = allTags.map(t => `<span class="tag accent">${esc(t)}</span>`).join('');
-    html += card('Tags & Keywords', `<div class="tags-wrap">${tags}</div>`);
-  }
-
-  el.innerHTML = html;
-  el.style.display = 'block';
+  el.innerHTML=html;el.style.display='block';
 }
 </script>
 </body>
