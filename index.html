@@ -194,25 +194,28 @@ function st(m,t){
 
 function getPrompt(){
   var p='';
-  p+='Analyze this image and output a JSON object for AI image generation.\n';
-  p+='STRICT RULES:\n';
-  p+='1. Your entire response must be ONLY the JSON object\n';
-  p+='2. Start your response with { and end with }\n';
-  p+='3. Do NOT write any text before or after the JSON\n';
-  p+='4. Do NOT use markdown or code fences\n\n';
-  p+='JSON keys to include:\n';
-  p+='prompt_en: complete Stable Diffusion / Midjourney prompt in English with subject, art style, artist reference, lighting, colors, composition, quality tags (masterpiece, best quality, highly detailed, 8k)\n';
-  p+='prompt_zh: same prompt in Traditional Chinese\n';
-  p+='negative_prompt_en: what to avoid in English\n';
-  p+='negative_prompt_zh: what to avoid in Traditional Chinese\n';
-  p+='style_tags: array of 5 style keywords\n';
-  p+='artist_reference: artist name or style\n';
-  p+='art_movement: art movement name\n';
-  p+='mood: mood and atmosphere\n';
-  p+='technical_medium: painting medium\n';
-  p+='color_palette: array of 3 color descriptions\n';
-  p+='recommended_model: best AI model for this style\n';
-  p+='composition_notes: composition analysis';
+  p+='You are an AI image prompt engineer. Analyze this image carefully.\n\n';
+  p+='OUTPUT RULES (CRITICAL):\n';
+  p+='- Respond with ONLY a raw JSON object\n';
+  p+='- The very first character must be {\n';
+  p+='- The very last character must be }\n';
+  p+='- No markdown, no backticks, no explanation text\n\n';
+  p+='Fill in this exact JSON (replace the placeholder values):\n';
+  p+='{\n';
+  p+='"prompt_en": "1girl, brown hair, cream helmet, clear goggles, blue jacket, yellow scarf, riding skateboard, orange-white cat on shoulder, red mail bag, cartoon style, flat design, bold lines, pastel colors, soft shadows, masterpiece, best quality, highly detailed, 8k",\n';
+  p+='"prompt_zh": "一位女孩，棕色頭髮，奶油色安全帽，透明護目鏡，藍色外套，騎著滑板，肩上有橘白貓，紅色郵差包，卡通風格，扁平設計，粗線條，柔和色調，高品質，精緻細節",\n';
+  p+='"negative_prompt_en": "ugly, blurry, deformed, bad anatomy, extra limbs, watermark, signature, low quality, worst quality, jpeg artifacts",\n';
+  p+='"negative_prompt_zh": "醜陋, 模糊, 變形, 解剖錯誤, 多餘肢體, 浮水印, 簽名, 低品質, 最差品質",\n';
+  p+='"style_tags": ["flat design", "cartoon", "illustration", "bold outline", "pastel color"],\n';
+  p+='"artist_reference": "artist name or Unknown",\n';
+  p+='"art_movement": "e.g. Pop Art / Manga / Concept Art",\n';
+  p+='"mood": "e.g. cheerful, mysterious, energetic",\n';
+  p+='"technical_medium": "e.g. digital illustration, watercolor, oil painting",\n';
+  p+='"color_palette": ["warm orange", "cool blue", "cream white"],\n';
+  p+='"recommended_model": "e.g. Stable Diffusion XL / Midjourney v6",\n';
+  p+='"composition_notes": "e.g. center composition, full body, dynamic pose"\n';
+  p+='}\n\n';
+  p+='IMPORTANT: Replace ALL values above with your actual analysis of the image. The prompt_en must use comma-separated English keywords like real Stable Diffusion prompts, NOT full sentences.';
   return p;
 }
 
@@ -280,14 +283,25 @@ async function analyze(){
 }
 
 function parseJ(raw){
+  // Strip markdown fences
   var s=raw.replace(/^```[a-zA-Z]*\s*/gm,'').replace(/```\s*$/gm,'').trim();
+  // Direct parse
   try{return JSON.parse(s);}catch(e){}
+  // Find first { and last } - handles leading/trailing text
   var start=s.indexOf('{');
   var end=s.lastIndexOf('}');
   if(start<0||end<0||end<=start)return null;
   var block=s.slice(start,end+1);
   try{return JSON.parse(block);}catch(e){}
+  // Fix trailing commas
   try{return JSON.parse(block.replace(/,\s*([}\]])/g,'$1'));}catch(e){}
+  // Fix unescaped newlines inside strings
+  try{
+    var fixed=block.replace(/:\s*"((?:[^"\\]|\\.)*)"/g,function(m,v){
+      return ': "'+v.replace(/\n/g,'\\n').replace(/\r/g,'')+'"';
+    });
+    return JSON.parse(fixed);
+  }catch(e){}
   return null;
 }
 
