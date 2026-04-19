@@ -137,31 +137,32 @@ footer a:hover{text-decoration:underline}
 <script>
 let b64=null,mime=null,key='';
 
-window.addEventListener('DOMContentLoaded',()=>{
-  const k=localStorage.getItem('gk');
+window.addEventListener('DOMContentLoaded',function(){
+  var k=localStorage.getItem('gk');
   if(k){key=k;document.getElementById('api-key').value=k;ks('✓ 已載入','ok');}
 });
 
 function saveKey(){
-  const k=document.getElementById('api-key').value.trim();
+  var k=document.getElementById('api-key').value.trim();
   if(!k){ks('⚠ 請輸入 Key','err');return;}
   key=k;localStorage.setItem('gk',k);ks('✓ 已儲存','ok');
 }
 function ks(m,t){
-  const el=document.getElementById('key-status');
+  var el=document.getElementById('key-status');
   el.textContent=m;el.style.color=t==='ok'?'var(--ok)':'var(--err)';
 }
 
 function onDO(e){e.preventDefault();document.getElementById('dropzone').classList.add('drag');}
 function onDL(){document.getElementById('dropzone').classList.remove('drag');}
-function onDP(e){e.preventDefault();onDL();const f=e.dataTransfer.files[0];if(f)load(f);}
-function onFS(e){if(e.target.files[0])load(e.target.files[0]);}
+function onDP(e){e.preventDefault();onDL();var f=e.dataTransfer.files[0];if(f)loadFile(f);}
+function onFS(e){if(e.target.files[0])loadFile(e.target.files[0]);}
 
-function load(file){
+function loadFile(file){
   if(file.size>5*1024*1024){alert('檔案過大（最大 5MB）');return;}
-  const r=new FileReader();
-  r.onload=e=>{
-    b64=e.target.result.split(',')[1];mime=file.type;
+  var r=new FileReader();
+  r.onload=function(e){
+    b64=e.target.result.split(',')[1];
+    mime=file.type;
     document.getElementById('prev-img').src=e.target.result;
     document.getElementById('fn').textContent=file.name;
     document.getElementById('fs').textContent=(file.size/1024).toFixed(0)+' KB';
@@ -179,28 +180,41 @@ function clearImg(){
   document.getElementById('dropzone').style.display='block';
   document.getElementById('preview-area').style.display='none';
   document.getElementById('results').style.display='none';
-  document.getElementById('fi').value='';st('');
+  document.getElementById('fi').value='';
+  st('');
 }
 
 function st(m,t){
-  const el=document.getElementById('status');
+  var el=document.getElementById('status');
   if(!m){el.innerHTML='';return;}
-  if(t==='load')el.innerHTML='<div class="s-load"><div class="spin"></div>'+esc(m)+'</div>';
-  else if(t==='err')el.innerHTML='<div class="s-err">'+esc(m)+'</div>';
+  if(t==='load') el.innerHTML='<div class="s-load"><div class="spin"></div>'+esc(m)+'</div>';
+  else if(t==='err') el.innerHTML='<div class="s-err">'+esc(m)+'</div>';
   else el.textContent=m;
 }
 
-function prompt_text(){
-  return `Analyze this image and output a JSON object for AI image generation. 
-
-STRICT RULES:
-1. Your entire response must be ONLY the JSON object
-2. Start your response with { and end with }
-3. Do NOT write any text before or after the JSON
-4. Do NOT use markdown or code fences
-
-JSON format (fill in real values, keep the exact keys):
-{"prompt_en":"[Stable Diffusion prompt: subject + art style + artist reference + lighting + colors + composition + quality tags like masterpiece best quality highly detailed 8k]","prompt_zh":"[同上完整繁中生圖咒語]","negative_prompt_en":"ugly, deformed, blurry, bad anatomy, extra limbs, watermark, low quality, worst quality","negative_prompt_zh":"醜陋,變形,模糊,解剖錯誤,浮水印,低品質,最差品質","style_tags":["tag1","tag2","tag3","tag4","tag5"],"artist_reference":"artist name","art_movement":"art style","mood":"mood description","technical_medium":"medium","color_palette":["color1","color2","color3"],"recommended_model":"Midjourney v6 / SDXL / DALL-E 3","composition_notes":"composition analysis"}`;\n}
+function getPrompt(){
+  var p='';
+  p+='Analyze this image and output a JSON object for AI image generation.\n';
+  p+='STRICT RULES:\n';
+  p+='1. Your entire response must be ONLY the JSON object\n';
+  p+='2. Start your response with { and end with }\n';
+  p+='3. Do NOT write any text before or after the JSON\n';
+  p+='4. Do NOT use markdown or code fences\n\n';
+  p+='JSON keys to include:\n';
+  p+='prompt_en: complete Stable Diffusion / Midjourney prompt in English with subject, art style, artist reference, lighting, colors, composition, quality tags (masterpiece, best quality, highly detailed, 8k)\n';
+  p+='prompt_zh: same prompt in Traditional Chinese\n';
+  p+='negative_prompt_en: what to avoid in English\n';
+  p+='negative_prompt_zh: what to avoid in Traditional Chinese\n';
+  p+='style_tags: array of 5 style keywords\n';
+  p+='artist_reference: artist name or style\n';
+  p+='art_movement: art movement name\n';
+  p+='mood: mood and atmosphere\n';
+  p+='technical_medium: painting medium\n';
+  p+='color_palette: array of 3 color descriptions\n';
+  p+='recommended_model: best AI model for this style\n';
+  p+='composition_notes: composition analysis';
+  return p;
+}
 
 async function analyze(){
   if(!key){st('請先儲存 Gemini API Key。','err');return;}
@@ -209,120 +223,128 @@ async function analyze(){
   document.getElementById('go-btn').disabled=true;
   document.getElementById('results').style.display='none';
 
-  // Try key in URL (more compatible with free tier) and header both
-  const models=['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
-  const errors=[];
+  var models=['gemini-2.5-flash','gemini-2.0-flash','gemini-2.0-flash-lite'];
+  var errors=[];
 
-  for(const model of models){
-    st('嘗試模型 '+model+'...','load');
+  for(var i=0;i<models.length;i++){
+    var model=models[i];
+    st('嘗試 '+model+'...','load');
     try{
-      const url='https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key);
-      const res=await fetch(url,{
+      var url='https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(key);
+      var res=await fetch(url,{
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({
           contents:[{parts:[
             {inline_data:{mime_type:mime,data:b64}},
-            {text:prompt_text()}
+            {text:getPrompt()}
           ]}],
           generationConfig:{temperature:0.2,maxOutputTokens:2000}
         })
       });
-      const data=await res.json();
+      var data=await res.json();
       if(!res.ok){
-        const msg=data?.error?.message||'HTTP '+res.status;
+        var msg=(data&&data.error&&data.error.message)||('HTTP '+res.status);
+        if(res.status===400&&msg.indexOf('API_KEY')>=0){
+          st('API Key 無效，請重新確認','err');
+          document.getElementById('go-btn').disabled=false;return;
+        }
+        if(res.status===403){
+          st('Permission denied (403)','err');
+          document.getElementById('go-btn').disabled=false;return;
+        }
+        if(res.status===429){
+          st('Rate limit (429) — 請稍後再試','err');
+          document.getElementById('go-btn').disabled=false;return;
+        }
         errors.push('['+model+'] '+res.status+': '+msg);
-        if(res.status===400&&msg.includes('API_KEY'))throw new Error('STOP:API Key 無效 — 請重新確認 Key 是否正確完整');
-        if(res.status===403)throw new Error('STOP:Permission denied (403) — Key 無存取此 API 的權限');
-        if(res.status===429)throw new Error('STOP:Rate limit (429) — 請等 1 分鐘後再試');
         continue;
       }
-      const raw=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
-      if(!raw){errors.push('['+model+'] 回傳空白');continue;}
-      const json=parseJ(raw);
-      if(!json){
-        // Fallback: display raw text directly if JSON parse fails
-        errors.push('['+model+'] JSON解析失敗，改用純文字顯示');
-        renderRaw(raw,model);st('');
-        document.getElementById('go-btn').disabled=false;
-        return;
+      var raw=(data&&data.candidates&&data.candidates[0]&&data.candidates[0].content&&data.candidates[0].content.parts&&data.candidates[0].content.parts[0]&&data.candidates[0].content.parts[0].text)||'';
+      if(!raw){errors.push('['+model+'] 空白回應');continue;}
+      var json=parseJ(raw);
+      if(json){
+        render(json,model);
+      } else {
+        renderRaw(raw,model);
       }
-      render(json,model);st('');
+      st('');
       document.getElementById('go-btn').disabled=false;
       return;
     }catch(e){
-      if(e.message.startsWith('STOP:')){
-        st(e.message.slice(5),'err');
-        document.getElementById('go-btn').disabled=false;return;
-      }
       errors.push('['+model+'] '+e.message);
     }
   }
-  st('所有模型都失敗，詳細錯誤：\n'+errors.join('\n'),'err');
+  st('所有模型都失敗：\n'+errors.join('\n'),'err');
   document.getElementById('go-btn').disabled=false;
 }
 
 function parseJ(raw){
-  // Remove markdown fences
-  let s=raw.replace(/^```[a-zA-Z]*\s*/gm,'').replace(/```\s*$/gm,'').trim();
-  // Direct parse
-  try{return JSON.parse(s);}catch(_){}
-  // Find outermost { }
-  const start=s.indexOf('{');
-  const end=s.lastIndexOf('}');
-  if(start===-1||end===-1||end<=start)return null;
-  const block=s.slice(start,end+1);
-  // Try parse block
-  try{return JSON.parse(block);}catch(_){}
-  // Fix trailing commas
-  try{return JSON.parse(block.replace(/,\s*([}\]])/g,'$1'));}catch(_){}
-  // Last resort: try to fix common issues
-  try{
-    const fixed=block
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g,' ')
-      .replace(/,\s*([}\]])/g,'$1')
-      .replace(/([{,]\s*)(\w+)(\s*:)/g,'$1"$2"$3');
-    return JSON.parse(fixed);
-  }catch(_){}
+  var s=raw.replace(/^```[a-zA-Z]*\s*/gm,'').replace(/```\s*$/gm,'').trim();
+  try{return JSON.parse(s);}catch(e){}
+  var start=s.indexOf('{');
+  var end=s.lastIndexOf('}');
+  if(start<0||end<0||end<=start)return null;
+  var block=s.slice(start,end+1);
+  try{return JSON.parse(block);}catch(e){}
+  try{return JSON.parse(block.replace(/,\s*([}\]])/g,'$1'));}catch(e){}
   return null;
 }
 
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');}
+function esc(s){
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/\n/g,'<br>');
+}
 
-function cpBtn(text){return '<button class="btn-copy" onclick="cp(this,'+JSON.stringify(text)+')">複製</button>';}
-function cp(btn,t){navigator.clipboard.writeText(t).then(()=>{btn.textContent='已複製!';setTimeout(()=>btn.textContent='複製',1500);});}
+function cp(btn,text){
+  navigator.clipboard.writeText(text).then(function(){
+    btn.textContent='已複製!';
+    setTimeout(function(){btn.textContent='複製';},1500);
+  });
+}
 
 function card(lbl,inner,ctext){
-  return '<div class="card"><div class="card-hd"><span class="card-lbl">'+lbl+'</span>'+(ctext?cpBtn(ctext):'')+'</div>'+inner+'</div>';
+  var btn=ctext?('<button class="btn-copy" onclick="cp(this,this.dataset.t)" data-t="">複製</button>'):'';
+  var out='<div class="card"><div class="card-hd"><span class="card-lbl">'+lbl+'</span>'+btn+'</div>'+inner+'</div>';
+  return out;
 }
 
 function renderRaw(raw,model){
-  const el=document.getElementById('results');
-  const fullText=raw.trim();
-  // Store text for copy button
-  window._rawText=fullText;
-  let html='<div class="res-hd"><div class="dot"></div><span>分析完成 — '+esc(model)+'</span></div>';
-  html+='<div class="card"><div class="card-hd"><span class="card-lbl">🎨 AI 生圖咒語</span><button class="btn-copy" onclick="cp(this,window._rawText)">複製全部</button></div>'
-  +'<div class="pt" style="white-space:pre-wrap">'+esc(fullText)+'</div></div>';
-  el.innerHTML=html;el.style.display='block';
+  window.__copyText=raw.trim();
+  var el=document.getElementById('results');
+  var html='<div class="res-hd"><div class="dot"></div><span>分析完成 — '+esc(model)+'</span></div>';
+  html+='<div class="card">';
+  html+='<div class="card-hd"><span class="card-lbl">🎨 AI 生圖咒語</span>';
+  html+='<button class="btn-copy" onclick="cp(this,window.__copyText)">複製</button></div>';
+  html+='<div class="pt" style="white-space:pre-wrap">'+esc(raw.trim())+'</div></div>';
+  el.innerHTML=html;
+  el.style.display='block';
 }
 
-
 function render(j,model){
-  const el=document.getElementById('results');
-  let html='<div class="res-hd"><div class="dot"></div><span>分析完成 — '+esc(model)+'</span></div>';
+  var el=document.getElementById('results');
+  var html='<div class="res-hd"><div class="dot"></div><span>分析完成 — '+esc(model)+'</span></div>';
 
-  if(j.prompt_en)
-    html+=card('🎨 AI 生圖咒語 — English','<div class="pt">'+esc(j.prompt_en)+'</div>',j.prompt_en);
-  if(j.prompt_zh)
-    html+=card('🎨 AI 生圖咒語 — 繁體中文','<div class="pt">'+esc(j.prompt_zh)+'</div>',j.prompt_zh);
-
-  if(j.negative_prompt_en||j.negative_prompt_zh){
-    const neg=[j.negative_prompt_en,j.negative_prompt_zh].filter(Boolean).join('\n');
-    html+=card('🚫 負面提示詞 Negative Prompt','<div class="pt" style="color:var(--muted)">'+esc(neg)+'</div>',neg);
+  function ccard(lbl,text){
+    if(!text)return '';
+    window['__t_'+lbl]=text;
+    return '<div class="card"><div class="card-hd"><span class="card-lbl">'+lbl+'</span>'
+      +'<button class="btn-copy" onclick="cp(this,window[\'__t_'+lbl+'\'])">複製</button></div>'
+      +'<div class="pt">'+esc(text)+'</div></div>';
   }
 
-  const fields=[];
+  if(j.prompt_en) html+=ccard('🎨 AI 生圖咒語 — English',j.prompt_en);
+  if(j.prompt_zh) html+=ccard('🎨 AI 生圖咒語 — 繁體中文',j.prompt_zh);
+
+  if(j.negative_prompt_en||j.negative_prompt_zh){
+    var neg=[j.negative_prompt_en,j.negative_prompt_zh].filter(Boolean).join('\n');
+    html+=ccard('🚫 負面提示詞',neg);
+  }
+
+  var fields=[];
   if(j.artist_reference)fields.push(['藝術家參考',j.artist_reference]);
   if(j.art_movement)fields.push(['藝術風格',j.art_movement]);
   if(j.mood)fields.push(['氛圍',j.mood]);
@@ -330,20 +352,23 @@ function render(j,model){
   if(j.recommended_model)fields.push(['推薦生圖模型',j.recommended_model]);
   if(j.composition_notes)fields.push(['構圖分析',j.composition_notes]);
   if(fields.length){
-    const g=fields.map(([l,v])=>'<div><div class="ilbl">'+l+'</div><div class="ival">'+esc(v)+'</div></div>').join('');
-    html+=card('📊 風格分析','<div class="igrid">'+g+'</div>');
+    var g=fields.map(function(f){
+      return '<div><div class="ilbl">'+f[0]+'</div><div class="ival">'+esc(f[1])+'</div></div>';
+    }).join('');
+    html+='<div class="card"><div class="card-hd"><span class="card-lbl">📊 風格分析</span></div><div class="igrid">'+g+'</div></div>';
   }
 
-  if(j.color_palette?.length){
-    const sw=j.color_palette.map(c=>'<span class="chip">'+esc(c)+'</span>').join('');
-    html+=card('🎨 色盤','<div class="chips">'+sw+'</div>');
+  if(j.color_palette&&j.color_palette.length){
+    var sw=j.color_palette.map(function(c){return '<span class="chip">'+esc(c)+'</span>';}).join('');
+    html+='<div class="card"><div class="card-hd"><span class="card-lbl">🎨 色盤</span></div><div class="chips">'+sw+'</div></div>';
   }
-  if(j.style_tags?.length){
-    const tg=j.style_tags.map(t=>'<span class="chip hi">'+esc(t)+'</span>').join('');
-    html+=card('🏷️ 風格標籤','<div class="chips">'+tg+'</div>');
+  if(j.style_tags&&j.style_tags.length){
+    var tg=j.style_tags.map(function(t){return '<span class="chip hi">'+esc(t)+'</span>';}).join('');
+    html+='<div class="card"><div class="card-hd"><span class="card-lbl">🏷️ 風格標籤</span></div><div class="chips">'+tg+'</div></div>';
   }
 
-  el.innerHTML=html;el.style.display='block';
+  el.innerHTML=html;
+  el.style.display='block';
 }
 </script>
 </body>
