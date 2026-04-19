@@ -3,369 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Prompt Interrogator | AI 影像逆向工程助手</title>
-    <!-- 引入 Tailwind CSS 與 React 必要的 CDN -->
+    <title>Prompt Interrogator | 最終穩定版</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono&family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        body { 
-            font-family: 'Noto Sans TC', sans-serif; 
-            background-color: #020617; 
-            color: #f8fafc; 
-        }
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        .glass-panel { 
-            background: rgba(15, 23, 42, 0.8); 
-            backdrop-filter: blur(16px); 
-            border: 1px solid rgba(255, 255, 255, 0.05); 
-        }
-        .gradient-glow {
-            background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .reveal-up {
-            animation: revealUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
-        @keyframes revealUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        /* 自定義捲軸 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-    </style>
 </head>
-<body>
+<body class="bg-slate-900 text-white p-4">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState } = React;
 
         const App = () => {
-            const [apiKey, setApiKey] = useState('');
-            const [modelName, setModelName] = useState('gemini-1.5-flash');
-            const [isConfigOpen, setIsConfigOpen] = useState(true);
-            const [selectedImage, setSelectedImage] = useState(null);
-            const [imageContent, setImageContent] = useState({ data: null, mimeType: null });
-            const [isLoading, setIsLoading] = useState(false);
-            const [analysis, setAnalysis] = useState(null);
-            const [error, setError] = useState(null);
-            const [copied, setCopied] = useState(false);
+            const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_key') || '');
+            const [status, setStatus] = useState('準備就緒');
+            const [image, setImage] = useState(null);
 
-            // 初始化時讀取 LocalStorage
-            useEffect(() => {
-                const savedKey = localStorage.getItem('gemini_interrogator_key_v3_stable');
-                const savedModel = localStorage.getItem('gemini_interrogator_model');
-                if (savedKey) {
-                    setApiKey(savedKey);
-                    setIsConfigOpen(false);
-                }
-                if (savedModel) {
-                    setModelName(savedModel);
-                }
-            }, []);
+            const analyze = async () => {
+                if (!apiKey) { alert("請輸入 Key"); return; }
+                if (!image) { alert("請選圖片"); return; }
 
-            const handleImage = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    setSelectedImage(URL.createObjectURL(file));
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        setImageContent({
-                            data: reader.result.split(',')[1],
-                            mimeType: file.type
-                        });
-                    };
-                    reader.readAsDataURL(file);
-                    setError(null);
-                    setAnalysis(null);
-                }
-            };
-
-            const performAnalysis = async () => {
-                if (!apiKey) {
-                    setError("請先在上方設定中心輸入您的 API Key。");
-                    setIsConfigOpen(true);
-                    return;
-                }
-                if (!imageContent.data) {
-                    setError("請選擇一張圖片進行逆向分析。");
-                    return;
-                }
-
-                setIsLoading(true);
-                setError(null);
-                setAnalysis(null);
-
-                // 使用 v1beta 搭配可動態調整的模型名稱
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-                const promptText = `你是一個專業的 AI 繪圖提示詞逆向工程師。請深度分析此圖片，並回傳可在 Midjourney 或 DALL-E 3 中重現此風格的專業提示詞。
-你的分析必須包含：
-1. Summary: 一句話描述核心主題。
-2. Chinese Details: 包含主體(subject)、風格(style)、照明與色彩(lighting)的繁體中文描述。
-3. Tech Tags: 適合 AI 繪圖工具的技術標籤。
-4. Full Prompt: 完整的英文繪圖指令串。
-
-請務必以純 JSON 格式回傳（不可包含任何 Markdown 代碼塊標籤或說明文字），格式如下：
-{
-  "summary": "...",
-  "chinese_details": { "subject": "...", "style": "...", "lighting": "..." },
-  "tech_tags": ["tag1", "tag2"],
-  "full_prompt": "..."
-}`;
-
-                const payload = {
-                    contents: [{
-                        parts: [
-                            { text: promptText },
-                            { inlineData: { mimeType: imageContent.mimeType, data: imageContent.data } }
-                        ]
-                    }],
-                    generationConfig: {
-                        temperature: 0.4,
-                        topP: 1,
-                        topK: 32,
-                        maxOutputTokens: 2048,
-                    }
-                };
-
+                setStatus("分析中...");
+                // 使用最經典的視覺模型端點
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro-vision:generateContent?key=${apiKey}`;
+                
                 try {
                     const response = await fetch(url, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    { text: "請分析此圖片的藝術風格與主體內容，並回傳格式為 JSON: {'summary': '', 'chinese_details': {'subject': '', 'style': '', 'lighting': ''}, 'english_prompts': []}" },
+                                    { inlineData: { mimeType: image.type, data: image.data } }
+                                ]
+                            }]
+                        })
                     });
 
                     const data = await response.json();
-
-                    if (!response.ok) {
-                        const errMsg = data.error?.message || "API 請求遭遇未知的錯誤。";
-                        const status = data.error?.status || response.status;
-                        
-                        if (response.status === 404) {
-                            throw new Error(`[404 NOT_FOUND] 目前使用的模型名稱 '${modelName}' 無法找到。這通常是因為該模型在您的 API Key 權限下尚未啟用。`);
-                        }
-                        
-                        throw new Error(`[${status}] ${errMsg}`);
-                    }
-
-                    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                    if (!rawText) throw new Error("AI 回傳了空的結果，可能受內容審查影響。");
-
-                    // 從文字中提取 JSON
-                    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error("回傳格式非 JSON，解析失敗。");
+                    if (!response.ok) throw new Error(data.error?.message || "請求失敗");
                     
-                    setAnalysis(JSON.parse(jsonMatch[0]));
+                    const text = data.candidates[0].content.parts[0].text;
+                    document.getElementById('result').innerText = text;
+                    setStatus("分析完成！");
                 } catch (err) {
-                    console.error("Analysis Failure:", err);
-                    setError(err.message);
-                } finally {
-                    setIsLoading(false);
+                    setStatus("失敗: " + err.message);
                 }
             };
 
-            const copyToClip = (text) => {
-                const el = document.createElement('textarea');
-                el.value = text;
-                document.body.appendChild(el);
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-            };
-
             return (
-                <div className="min-h-screen px-4 py-10 md:py-20 flex flex-col items-center">
-                    <div className="w-full max-w-2xl">
-                        
-                        {/* API 設定中心 */}
-                        <div className="glass-panel rounded-3xl mb-12 shadow-2xl transition-all">
-                            <button 
-                                onClick={() => setIsConfigOpen(!isConfigOpen)}
-                                className="w-full px-8 py-4 flex items-center justify-between hover:bg-white/5 transition-colors"
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-2 h-2 rounded-full ${apiKey ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-slate-600'}`}></div>
-                                    <span className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-400 italic font-bold">API 設定中心</span>
-                                </div>
-                                <span className="text-slate-500 text-[10px] uppercase font-bold tracking-widest">{isConfigOpen ? "收起 ▲" : "展開 ▼"}</span>
-                            </button>
-                            
-                            {isConfigOpen && (
-                                <div className="px-8 pb-8 pt-2 space-y-4">
-                                    <div>
-                                        <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 ml-1">Gemini API Key</label>
-                                        <input 
-                                            type="password"
-                                            placeholder="請貼上您的 Gemini API Key"
-                                            value={apiKey}
-                                            onChange={(e) => {
-                                                const v = e.target.value.trim();
-                                                setApiKey(v);
-                                                localStorage.setItem('gemini_interrogator_key_v3_stable', v);
-                                            }}
-                                            className="w-full p-4 bg-black/40 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs text-indigo-300 transition-all"
-                                        />
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1 ml-1">模型選擇 (新增 2.5 版本)</label>
-                                        <select 
-                                            value={modelName}
-                                            onChange={(e) => {
-                                                setModelName(e.target.value);
-                                                localStorage.setItem('gemini_interrogator_model', e.target.value);
-                                            }}
-                                            className="w-full p-4 bg-black/40 border border-white/10 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs text-indigo-300 transition-all appearance-none cursor-pointer"
-                                        >
-                                            <option value="gemini-1.5-flash">gemini-1.5-flash (穩定/推薦)</option>
-                                            <option value="gemini-2.5-flash-preview-09-2025">gemini-2.5-flash (最新預覽版)</option>
-                                            <option value="gemini-1.5-pro">gemini-1.5-pro (最強理解能力)</option>
-                                            <option value="gemini-2.0-flash-exp">gemini-2.0-flash-exp (2.0 實驗版)</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="mt-4 flex flex-col md:flex-row justify-between items-center text-[10px] text-slate-500 font-bold uppercase tracking-widest gap-2">
-                                        <p>Key 與模型設定儲存於本地瀏覽器</p>
-                                        <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-indigo-400 hover:text-indigo-300 underline font-bold">取得密鑰 →</a>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 標題 */}
-                        <header className="text-center mb-16">
-                            <div className="inline-block relative">
-                                <div className="absolute inset-0 bg-indigo-500 blur-2xl opacity-20"></div>
-                                <div className="relative bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center text-3xl shadow-2xl shadow-indigo-900/50 mb-6 transform -rotate-3">🧩</div>
-                            </div>
-                            <h1 className="text-4xl font-black italic tracking-tighter text-white uppercase mt-4">Prompt <span className="gradient-glow">Interrogator</span></h1>
-                            <p className="text-slate-500 text-[10px] font-black tracking-[0.5em] mt-3 uppercase opacity-60">Neural Reverse Engineering Lab</p>
-                        </header>
-
-                        {/* 上傳區 */}
-                        <div className="glass-panel rounded-[2.5rem] p-8 md:p-10 shadow-2xl mb-12">
-                            <div 
-                                onClick={() => document.getElementById('up').click()}
-                                className={`border-2 border-dashed rounded-[2rem] min-h-[350px] flex items-center justify-center cursor-pointer transition-all duration-500 overflow-hidden relative group
-                                    ${selectedImage ? 'bg-slate-900/50 border-indigo-500/50' : 'border-white/10 hover:border-indigo-500/50 hover:bg-white/5'}`}
-                            >
-                                {selectedImage ? (
-                                    <img src={selectedImage} className="max-h-[300px] object-contain rounded-2xl shadow-2xl transition-transform group-hover:scale-105 duration-500" />
-                                ) : (
-                                    <div className="text-center space-y-4 opacity-30 group-hover:opacity-60 transition-opacity">
-                                        <div className="text-6xl">📸</div>
-                                        <p className="font-black text-[10px] uppercase tracking-widest">Select Image Data</p>
-                                    </div>
-                                )}
-                                <input id="up" type="file" className="hidden" accept="image/*" onChange={handleImage} />
-                            </div>
-
-                            <button 
-                                onClick={performAnalysis}
-                                disabled={isLoading || !imageContent.data}
-                                className={`w-full mt-10 py-5 rounded-2xl font-black text-xl transition-all active:scale-95 shadow-2xl flex items-center justify-center gap-3
-                                    ${isLoading || !imageContent.data 
-                                        ? 'bg-white/5 text-slate-600' 
-                                        : 'bg-white text-black hover:bg-indigo-600 hover:text-white shadow-indigo-900/20'}`}
-                            >
-                                {isLoading ? (
-                                    <><div className="w-6 h-6 border-4 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></div> DECODING...</>
-                                ) : "逆向生成提示詞"}
-                            </button>
-                        </div>
-
-                        {/* 錯誤反饋 */}
-                        {error && (
-                            <div className="mb-12 p-6 bg-red-900/20 border border-red-500/30 rounded-3xl animate-pulse">
-                                <h4 className="font-black text-red-500 uppercase text-[10px] tracking-widest mb-1 font-bold">系統故障回報</h4>
-                                <p className="font-mono text-xs text-red-400 break-words leading-relaxed">{error}</p>
-                                <div className="mt-4 p-4 bg-black/40 rounded-xl text-[10px] text-red-400/60 leading-normal italic">
-                                    診斷提示：若 2.5 版本出現 404，請確認您的 API 金鑰專案是否支援該版本。
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 解析結果展示 */}
-                        {analysis && (
-                            <div className="space-y-10 reveal-up">
-                                <div className="glass-panel rounded-[3.5rem] overflow-hidden shadow-[0_50px_100px_rgba(0,0,0,0.5)] border-indigo-500/20 border">
-                                    <div className="px-10 py-8 border-b border-white/5 flex flex-col md:flex-row justify-between items-center bg-white/5 gap-6">
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-1.5 h-6 bg-indigo-500 rounded-full shadow-[0_0_10px_#6366f1]"></div>
-                                            <h2 className="text-xl font-black italic text-white uppercase tracking-tighter font-bold">解析數據報告</h2>
-                                        </div>
-                                        <button 
-                                            onClick={() => copyToClip(analysis.full_prompt)}
-                                            className={`px-6 py-3 rounded-xl text-[10px] font-black tracking-widest transition-all uppercase active:scale-90
-                                                ${copied ? 'bg-emerald-500 text-white' : 'bg-indigo-600 text-white hover:bg-indigo-500'}`}
-                                        >
-                                            {copied ? "已複製提示詞" : "複製全文指令"}
-                                        </button>
-                                    </div>
-
-                                    <div className="p-10 md:p-14 space-y-12">
-                                        <p className="text-slate-100 font-bold text-2xl md:text-3xl leading-tight italic tracking-tight">{analysis.summary}</p>
-                                        
-                                        <div className="grid md:grid-cols-2 gap-12">
-                                            <section className="space-y-8">
-                                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">核心描述分層</h3>
-                                                <div className="space-y-6">
-                                                    <div>
-                                                        <span className="text-[10px] font-black text-indigo-500 block mb-2 uppercase tracking-widest font-bold">主體細節</span>
-                                                        <p className="text-slate-300 font-medium leading-relaxed">{analysis.chinese_details?.subject}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] font-black text-indigo-500 block mb-2 uppercase tracking-widest font-bold">風格流派</span>
-                                                        <p className="text-slate-300 font-medium leading-relaxed">{analysis.chinese_details?.style}</p>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] font-black text-indigo-500 block mb-2 uppercase tracking-widest font-bold">光影照明</span>
-                                                        <p className="text-slate-300 font-medium leading-relaxed">{analysis.chinese_details?.lighting}</p>
-                                                    </div>
-                                                </div>
-                                            </section>
-
-                                            <section className="space-y-8">
-                                                <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic font-bold">繪圖參數規格</h3>
-                                                <div className="space-y-6">
-                                                    <div>
-                                                        <span className="text-[10px] font-black text-indigo-500 block mb-4 uppercase tracking-widest font-bold">關鍵標籤集</span>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {analysis.tech_tags?.map((t, i) => <span key={i} className="px-3 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-[9px] font-mono text-indigo-300 uppercase font-bold">{t}</span>)}
-                                                        </div>
-                                                    </div>
-                                                    <div className="bg-black/60 p-8 rounded-[2rem] border border-white/5 shadow-inner group relative overflow-hidden">
-                                                        <div className="absolute top-0 right-0 p-3 text-[7px] font-black text-slate-700 uppercase tracking-widest group-hover:text-indigo-400 transition-colors italic">Final Prompt Output</div>
-                                                        <p className="mono text-indigo-400 text-sm leading-relaxed pt-2 break-words italic">{analysis.full_prompt}</p>
-                                                    </div>
-                                                </div>
-                                            </section>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <footer className="mt-24 text-center text-slate-800 text-[9px] font-black tracking-[0.5em] uppercase pb-10 italic">
-                            Vision Neural System v3.5 (Gemini 2.5 Supported)
-                        </footer>
-                    </div>
+                <div className="max-w-xl mx-auto space-y-4">
+                    <input type="password" placeholder="API Key" value={apiKey} onChange={(e) => {setApiKey(e.target.value); localStorage.setItem('gemini_key', e.target.value)}} className="w-full p-2 bg-slate-800 text-white rounded"/>
+                    <input type="file" onChange={(e) => {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.onloadend = () => setImage({ data: reader.result.split(',')[1], type: file.type });
+                        reader.readAsDataURL(file);
+                    }} className="w-full"/>
+                    <button onClick={analyze} className="w-full bg-blue-600 p-2 rounded font-bold">{status}</button>
+                    <pre id="result" className="bg-black p-4 text-xs overflow-auto h-60"></pre>
                 </div>
             );
         };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
