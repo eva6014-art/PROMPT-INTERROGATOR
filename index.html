@@ -64,8 +64,8 @@
                 setError(null);
                 setAnalysis(null);
 
-                // 強制使用 1.5 Flash，並確保 URL 格式正確
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // 修正：切換至正式版 v1 接口，這是付費帳戶最穩定的路徑
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
                 const promptText = `你是一個專業的 AI 繪圖提示詞逆向工程師。請深度分析此圖片，並回傳可在 Midjourney 或 DALL-E 3 中重現此風格的專業提示詞。
 回傳格式必須是 JSON 如下：
@@ -86,20 +86,25 @@
                                     { text: promptText },
                                     { inlineData: { mimeType: imageContent.mimeType, data: imageContent.data } }
                                 ]
-                            }],
-                            generationConfig: { responseMimeType: "application/json" }
+                            }]
                         })
                     });
 
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error?.message || "請求失敗");
+                    
+                    if (!response.ok) {
+                        const message = data.error?.message || "請求失敗";
+                        const status = data.error?.status || response.status;
+                        throw new Error(`[${status}] ${message}`);
+                    }
 
                     const rawText = data.candidates[0].content.parts[0].text;
                     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-                    if (!jsonMatch) throw new Error("AI 回傳格式錯誤");
+                    if (!jsonMatch) throw new Error("AI 回傳格式錯誤，無法解析 JSON");
                     
                     setAnalysis(JSON.parse(jsonMatch[0]));
                 } catch (err) {
+                    console.error("API Error:", err);
                     setError(err.message);
                 } finally {
                     setIsLoading(false);
@@ -128,13 +133,16 @@
                             </button>
                         </div>
                         {isConfigOpen && (
-                            <input 
-                                type="password" 
-                                placeholder="在此輸入 Gemini API Key" 
-                                value={apiKey} 
-                                onChange={(e) => {setApiKey(e.target.value); localStorage.setItem('gemini_interrogator_key', e.target.value)}}
-                                className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
-                            />
+                            <div className="space-y-2">
+                                <input 
+                                    type="password" 
+                                    placeholder="在此輸入 Gemini API Key" 
+                                    value={apiKey} 
+                                    onChange={(e) => {setApiKey(e.target.value.trim()); localStorage.setItem('gemini_interrogator_key', e.target.value.trim())}}
+                                    className="w-full bg-black/40 border border-white/10 p-4 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm text-indigo-200"
+                                />
+                                <p className="text-[9px] text-slate-500 px-2 font-bold uppercase tracking-wider italic">Stable API (v1) Optimization</p>
+                            </div>
                         )}
                     </div>
 
@@ -170,7 +178,12 @@
                         </button>
                     </div>
 
-                    {error && <div className="p-6 bg-red-900/20 border border-red-500/20 text-red-400 rounded-3xl text-xs font-mono mb-8">{error}</div>}
+                    {error && (
+                        <div className="p-6 bg-red-900/20 border border-red-500/20 text-red-400 rounded-3xl text-xs font-mono mb-8 animate-pulse">
+                            <p className="font-black uppercase tracking-widest mb-1 text-red-500">System Report:</p>
+                            {error}
+                        </div>
+                    )}
 
                     {/* 結果區 */}
                     {analysis && (
@@ -187,16 +200,17 @@
                                     <section className="space-y-6">
                                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 italic">Detail Report</h3>
                                         <div className="space-y-4">
-                                            <p><b className="text-indigo-400 block mb-1">主體：</b>{analysis.chinese_details.subject}</p>
-                                            <p><b className="text-indigo-400 block mb-1">風格：</b>{analysis.chinese_details.style}</p>
+                                            <p><b className="text-indigo-400 block mb-1">主體：</b>{analysis.chinese_details?.subject}</p>
+                                            <p><b className="text-indigo-400 block mb-1">風格：</b>{analysis.chinese_details?.style}</p>
+                                            <p><b className="text-indigo-400 block mb-1">光影：</b>{analysis.chinese_details?.lighting}</p>
                                         </div>
                                     </section>
                                     <section className="space-y-6">
                                         <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4 italic">Tags & Engine</h3>
                                         <div className="flex flex-wrap gap-2 mb-4">
-                                            {analysis.tech_tags.map((t, i) => <span key={i} className="px-3 py-1 bg-white/5 rounded-full text-[10px] mono border border-white/10">{t}</span>)}
+                                            {analysis.tech_tags?.map((t, i) => <span key={i} className="px-3 py-1 bg-white/5 rounded-full text-[10px] mono border border-white/10">{t}</span>)}
                                         </div>
-                                        <div className="bg-black/40 p-6 rounded-2xl border border-white/5 mono text-indigo-300 text-xs leading-relaxed">
+                                        <div className="bg-black/40 p-6 rounded-2xl border border-white/5 mono text-indigo-300 text-xs leading-relaxed shadow-inner">
                                             {analysis.full_prompt}
                                         </div>
                                     </section>
