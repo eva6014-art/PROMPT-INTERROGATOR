@@ -194,30 +194,14 @@ function st(m,t){
 
 function getPrompt(){
   var p='';
-  p+='You are an AI image prompt engineer. Analyze this image carefully.\n\n';
-  p+='OUTPUT RULES (CRITICAL):\n';
-  p+='- Respond with ONLY a raw JSON object\n';
-  p+='- The very first character must be {\n';
-  p+='- The very last character must be }\n';
-  p+='- No markdown, no backticks, no explanation text\n\n';
-  p+='Fill in this exact JSON (replace the placeholder values):\n';
-  p+='{\n';
-  p+='"prompt_en": "1girl, brown hair, cream helmet, clear goggles, blue jacket, yellow scarf, riding skateboard, orange-white cat on shoulder, red mail bag, cartoon style, flat design, bold lines, pastel colors, soft shadows, masterpiece, best quality, highly detailed, 8k",\n';
-  p+='"prompt_zh": "一位女孩，棕色頭髮，奶油色安全帽，透明護目鏡，藍色外套，騎著滑板，肩上有橘白貓，紅色郵差包，卡通風格，扁平設計，粗線條，柔和色調，高品質，精緻細節",\n';
-  p+='"negative_prompt_en": "ugly, blurry, deformed, bad anatomy, extra limbs, watermark, signature, low quality, worst quality, jpeg artifacts",\n';
-  p+='"negative_prompt_zh": "醜陋, 模糊, 變形, 解剖錯誤, 多餘肢體, 浮水印, 簽名, 低品質, 最差品質",\n';
-  p+='"style_tags": ["flat design", "cartoon", "illustration", "bold outline", "pastel color"],\n';
-  p+='"artist_reference": "artist name or Unknown",\n';
-  p+='"art_movement": "e.g. Pop Art / Manga / Concept Art",\n';
-  p+='"mood": "e.g. cheerful, mysterious, energetic",\n';
-  p+='"technical_medium": "e.g. digital illustration, watercolor, oil painting",\n';
-  p+='"color_palette": ["warm orange", "cool blue", "cream white"],\n';
-  p+='"recommended_model": "e.g. Stable Diffusion XL / Midjourney v6",\n';
-  p+='"composition_notes": "e.g. center composition, full body, dynamic pose"\n';
-  p+='}\n\n';
-  p+='IMPORTANT: Replace ALL values above with your actual analysis of the image. The prompt_en must use comma-separated English keywords like real Stable Diffusion prompts, NOT full sentences.';
+  p+='Analyze this image. Respond with ONLY a JSON object. First character must be {. Last character must be }.\n\n';
+  p+='CRITICAL: prompt_en must be comma-separated English keywords (Stable Diffusion style), NOT sentences. Example format:\n';
+  p+='"1girl, brown hair, blue jacket, yellow scarf, riding skateboard, cartoon style, flat design, bold black outline, pastel colors, soft shading, white background, masterpiece, best quality, highly detailed, 8k"\n\n';
+  p+='JSON to fill in:\n';
+  p+='{"prompt_en":"<comma-separated English keywords describing subject+style+quality>","prompt_zh":"<繁體中文逗號分隔關鍵詞>","style_tags":["tag1","tag2","tag3","tag4","tag5"],"artist_reference":"<artist or Unknown>","art_movement":"<style>","mood":"<mood>","technical_medium":"<medium>","color_palette":["<color1>","<color2>","<color3>"],"recommended_model":"<Midjourney v6 / SDXL / DALL-E 3>","composition_notes":"<brief note>"}';
   return p;
 }
+
 
 async function analyze(){
   if(!key){st('請先儲存 Gemini API Key。','err');return;}
@@ -352,11 +336,6 @@ function render(j,model){
 
   if(j.prompt_en) html+=ccard('🎨 AI 生圖咒語 — English',j.prompt_en);
   if(j.prompt_zh) html+=ccard('🎨 AI 生圖咒語 — 繁體中文',j.prompt_zh);
-
-  if(j.negative_prompt_en||j.negative_prompt_zh){
-    var neg=[j.negative_prompt_en,j.negative_prompt_zh].filter(Boolean).join('\n');
-    html+=ccard('🚫 負面提示詞',neg);
-  }
 
   var fields=[];
   if(j.artist_reference)fields.push(['藝術家參考',j.artist_reference]);
