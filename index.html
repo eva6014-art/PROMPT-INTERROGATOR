@@ -463,7 +463,7 @@
   <header class="header">
     <div class="header-label">Visual Reverse Engineering</div>
     <h1>Prompt<br>Interrogator</h1>
-    <p>Upload any AI-generated image and extract the prompt, style DNA, and generation parameters — powered by Gemini 1.5 Flash.</p>
+    <p>Upload any AI-generated image and extract the prompt, style DNA, and generation parameters — powered by Gemini 2.5 Flash.</p>
   </header>
 
   <!-- API Key -->
@@ -541,7 +541,7 @@
   <div id="results"></div>
 
   <footer class="footer">
-    Prompt Interrogator &mdash; powered by <a href="https://aistudio.google.com" target="_blank" rel="noopener">Gemini 1.5 Flash</a>.
+    Prompt Interrogator &mdash; powered by <a href="https://aistudio.google.com" target="_blank" rel="noopener">Gemini 2.5 Flash</a>.
     Your API key never leaves your browser.
   </footer>
 
@@ -641,15 +641,15 @@ ${langNote}`;
 async function analyze() {
   if (!apiKey) { setStatus('Please save your Gemini API key first.', 'error'); return; }
   if (!imageB64) { setStatus('Please upload an image first.', 'error'); return; }
-  setStatus('Analyzing with Gemini 1.5 Flash...', 'loading');
+  setStatus('Analyzing with Gemini 2.5 Flash...', 'loading');
   document.getElementById('analyze-btn').disabled = true;
   document.getElementById('results').style.display = 'none';
   const lang = document.getElementById('lang').value;
   try {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [
           { inline_data: { mime_type: imageType, data: imageB64 } },
