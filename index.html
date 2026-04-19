@@ -113,8 +113,8 @@ footer a:hover{text-decoration:underline}
       </div>
       <p>點擊上傳或拖放圖片</p>
       <p class="sub">PNG · JPG · WEBP · GIF — max 5 MB</p>
-      <input type="file" id="fi" accept="image/*" onchange="onFS(event)" />
     </div>
+    <input type="file" id="fi" accept="image/*" onchange="onFS(event)" style="display:none" />
   </div>
 
   <div id="preview-area">
@@ -298,17 +298,15 @@ function card(lbl,inner,ctext){
 
 function renderRaw(raw,model){
   const el=document.getElementById('results');
-  // Try to extract key info from raw text
-  let html='<div class="res-hd"><div class="dot"></div><span>分析完成 — '+esc(model)+'</span></div>';
-  // Split by common patterns to find prompt-like content
-  const lines=raw.split('\n').filter(l=>l.trim());
   const fullText=raw.trim();
-  html+=`<div class="card">
-    <div class="card-hd"><span class="card-lbl">🎨 AI 生圖咒語（Raw Output）</span><button class="btn-copy" onclick="cp(this,${JSON.stringify(fullText)})">複製全部</button></div>
-    <div class="pt" style="white-space:pre-wrap">${esc(fullText)}</div>
-  </div>`;
+  // Store text for copy button
+  window._rawText=fullText;
+  let html='<div class="res-hd"><div class="dot"></div><span>分析完成 — '+esc(model)+'</span></div>';
+  html+='<div class="card"><div class="card-hd"><span class="card-lbl">🎨 AI 生圖咒語</span><button class="btn-copy" onclick="cp(this,window._rawText)">複製全部</button></div>'
+  +'<div class="pt" style="white-space:pre-wrap">'+esc(fullText)+'</div></div>';
   el.innerHTML=html;el.style.display='block';
 }
+
 
 function render(j,model){
   const el=document.getElementById('results');
