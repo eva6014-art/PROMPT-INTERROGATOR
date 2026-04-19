@@ -93,7 +93,7 @@
                 setError(null);
                 setAnalysis(null);
 
-                // 【修復核心】切換至 v1 正式版路徑與模型標識
+                // 使用 v1 穩定版路徑
                 const model = "gemini-1.5-flash";
                 const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
 
@@ -104,7 +104,7 @@
 3. Tech Tags: 適合 AI 繪圖工具的技術標籤。
 4. Full Prompt: 完整的英文繪圖指令。
 
-請務必以 JSON 格式回傳，格式如下：
+請務必以純 JSON 格式回傳（不可包含任何 Markdown 代碼塊標籤或說明文字），格式如下：
 {
   "summary": "...",
   "chinese_details": { "subject": "...", "style": "...", "lighting": "..." },
@@ -119,8 +119,12 @@
                             { inlineData: { mimeType: imageContent.mimeType, data: imageContent.data } }
                         ]
                     }],
+                    // 移除了 responseMimeType 以確保 v1 API 的相容性
                     generationConfig: {
-                        responseMimeType: "application/json"
+                        temperature: 0.4,
+                        topP: 1,
+                        topK: 32,
+                        maxOutputTokens: 2048,
                     }
                 };
 
@@ -137,9 +141,8 @@
                         const errMsg = data.error?.message || "API 請求遭遇未知的錯誤。";
                         const status = data.error?.status || response.status;
                         
-                        // 針對 404 提供更精確的診斷
                         if (response.status === 404) {
-                            throw new Error(`[404 NOT_FOUND] 模型 '${model}' 在您的 API 專案中無法使用。請確認您在 Google AI Studio 中已正確啟用該模型，或嘗試重新產生 API Key。`);
+                            throw new Error(`[404 NOT_FOUND] 模型 '${model}' 無法使用。請確認您的 API Key 已開通並正確啟用。`);
                         }
                         
                         throw new Error(`[${status}] ${errMsg}`);
@@ -148,7 +151,7 @@
                     const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
                     if (!rawText) throw new Error("AI 回傳了空的結果，可能受內容審查影響。");
 
-                    // 從文字中提取 JSON (容錯 Markdown 標籤)
+                    // 從文字中提取 JSON (容錯處理，確保能抓到 {} 內的內容)
                     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
                     if (!jsonMatch) throw new Error("回傳格式非 JSON，解析失敗。");
                     
