@@ -252,8 +252,10 @@ async function analyze(){
       var json=parseJ(raw);
       if(json){
         render(json,model);
+        if(json.prompt_en) hubSave(json.prompt_en,'interrogator');
       } else {
         renderRaw(raw,model);
+        hubSave(raw.trim(),'interrogator');
       }
       st('');
       document.getElementById('go-btn').disabled=false;
@@ -288,6 +290,39 @@ function parseJ(raw){
   }catch(e){}
   return null;
 }
+
+// ── Hub 共用板整合 ──────────────────────────────────────────
+var HUB_KEY='hub_prompt';
+function hubSave(text,source){
+  if(!text)return;
+  localStorage.setItem(HUB_KEY,JSON.stringify({text:text,source:source,time:Date.now()}));
+  addHubButtons(text);
+}
+function addHubButtons(text){
+  var old=document.getElementById('hub-actions');
+  if(old)old.remove();
+  var wrap=document.createElement('div');
+  wrap.id='hub-actions';
+  wrap.style.cssText='margin-top:14px;display:flex;gap:8px;flex-wrap:wrap;';
+
+  var b1=document.createElement('button');
+  b1.className='btn-copy';
+  b1.textContent='✓ 已存入 Hub 共用板';
+  b1.style.cssText='background:#1a3a2a;border-color:#2a6a4a;color:#4fca8a;cursor:default;';
+  b1.disabled=true;
+
+  var b2=document.createElement('button');
+  b2.className='btn-copy';
+  b2.textContent='✨ 優化此咒語 → Generator';
+  b2.onclick=function(){
+    window.open('https://eva6014-art.github.io/ai-prompt-generator/?import='+encodeURIComponent(text),'_blank');
+  };
+
+  wrap.appendChild(b1);
+  wrap.appendChild(b2);
+  document.getElementById('results').appendChild(wrap);
+}
+// ─────────────────────────────────────────────────────────────
 
 function esc(s){
   return String(s)
