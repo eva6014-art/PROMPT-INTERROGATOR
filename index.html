@@ -138,8 +138,8 @@ footer a:hover{text-decoration:underline}
 let b64=null,mime=null,key='';
 
 window.addEventListener('DOMContentLoaded',function(){
-  var k=localStorage.getItem('gk');
-  if(k){key=k;document.getElementById('api-key').value=k;ks('✓ 已載入','ok');}
+  var k=localStorage.getItem('gemini_api_key')||localStorage.getItem('gk');
+  if(k){key=k;document.getElementById('api-key').value=k;ks('✓ 已從 Hub 帶入','ok');}
 });
 
 function saveKey(){
